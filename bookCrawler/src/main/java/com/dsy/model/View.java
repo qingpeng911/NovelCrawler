@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 小说
+ * 小说阅读详情
  * @author qingpeng
  */
 @Data

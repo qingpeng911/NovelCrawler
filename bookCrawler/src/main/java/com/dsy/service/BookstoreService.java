@@ -52,9 +52,9 @@ public class BookstoreService {
 	private ExecutorService threadPool = new ThreadPoolExecutor(0, 3, 5, TimeUnit.MINUTES, new LinkedBlockingQueue<Runnable>());
 	
 	/**
-	 * 扒取小说基本信息
+	 * 1.扒取小说基本信息
 	 */
-	private void crawlsBook(){
+	public void crawlsBook(){
 		boolean hasNext = true;
 		int pageNo = 1;
 		int pagesize = 500;
@@ -82,9 +82,13 @@ public class BookstoreService {
 			JsonObject lastObj = el.getAsJsonObject().getAsJsonObject("last");
 			JsonObject dataObj = el.getAsJsonObject().getAsJsonObject("data");
 			
+			//保存作者
 			Author author = new Author(authorObj.get("name").getAsString());
-			saveAuthor(author);
+			if (authorRepository.findByName(author.getName()) == null) {
+				authorRepository.save(author);
+			}
 			
+			//保存小说基本信息
 			Novel novel = new Novel(
 					novelObj.get("id").getAsInt(),
 					novelObj.get("name").getAsString(), 
@@ -104,6 +108,7 @@ public class BookstoreService {
 					);
 			novelRepository.save(novel);
 			
+			//保存小说阅读次数记录
 			View view = new View();
 			view.setCount(dataObj.get("dayvisit").getAsInt());
 			view.setNovel_id(novelObj.get("id").getAsInt());
@@ -112,47 +117,42 @@ public class BookstoreService {
 			view.setYear(DateUtil.getYear(new Date()));
 			viewRepository.save(view);
 			
+			//保存小说分类
 			Category category = new Category(categoryObj.get("id").getAsInt(), categoryObj.get("name").getAsString());
 			categoryRepository.save(category);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-
-	private void saveAuthor(Author author) {
-		if (authorRepository.findByName(author.getName()) == null) {
-			authorRepository.save(author);
-		}
-	}
 	
+	//重置小说目录抓取标识
+//	public void restNovel(){
+//		List<Novel> novels = novelRepository.findByCompeletCatalog(1);
+//		log.info("已经标记数："+novels.size());
+//		for (Novel novel : novels) {
+//			novel.setCompeletCatalog(null);
+//			novelRepository.save(novel);
+//		}
+//		novels = novelRepository.findByCompeletCatalog(1);
+//		log.info("是否重置完成："+(novels.size() == 0));
+//	}
 	
 	/**
-	 * 扒取小说目录
+	 * 2.根据已有的小说信息，扒取对应小说目录
 	 */
-	@PostConstruct
-	private void crawlsCatalog() {
-		int num = 0;
+	public void crawlsCatalog() {
+		//获取所有未扒取目录的小说id集合 大概10W本左右（可以保证一次未扒完 下次继续）
 		List<Novel> novels = novelRepository.findUnCompeletNovelIds();
-		log.info("小说总数："+novels.size());
-		try {
-			//先保存5000本
-			for (int i = 0; i < 5000; i++) {
+		log.info("待抓取目录的小说总数："+novels.size());
+		//一次扒一万本
+		for (int i = 0; i < 10000; i++) {
+			try {
 				Novel novel = novels.get(i);
 				//保存目录
 				saveCatalog(novel);
-				
-				//添加完成标识
-				Novel n = novelRepository.findOne(novel.getId());
-				n.setCompeletCatalog(1);
-				novelRepository.save(n);
-				
-				num++;
-				if (num % 100 == 0) {
-					log.info("累计完成小说："+num);							
-				}				
+			} catch (Exception e) {
+				log.error("Error:小说id:"+novels.get(i).getId(), e);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -171,6 +171,17 @@ public class BookstoreService {
 				 c.setUrl(o.get("url").getAsString());
 				 c.setNovel_id(novel_id);
 				 catalogRepository.save(c);
+			}
+			//能抓取到目录的，标记为已完成
+			Novel n = novelRepository.findOne(novel.getId());
+			if (catalogs.size() > 0) {
+				//添加完成标识
+				n.setCompeletCatalog(1);
+				novelRepository.save(n);				
+				log.info("【完成】-小说id："+n.getId()+" 总章节："+catalogs.size());
+			}else {
+				novelRepository.delete(novel_id);
+				log.info("【删除】-小说id："+n.getId()+" 总章节："+catalogs.size());
 			}
 		}
 	}

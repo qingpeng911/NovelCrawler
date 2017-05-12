@@ -10,6 +10,8 @@ import com.dsy.repository.custom.NovelRepositoryCustom;
 
 public interface NovelRepository extends NovelRepositoryCustom,CrudRepository<Novel, Integer> {
 
+	List<Novel> findByCompeletCatalog(Integer i);
+
 
 
 
