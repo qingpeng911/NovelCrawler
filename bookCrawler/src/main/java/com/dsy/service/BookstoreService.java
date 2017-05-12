@@ -7,8 +7,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +47,7 @@ public class BookstoreService {
 	@Autowired
 	private CatalogRepository catalogRepository;
 	
-	private ExecutorService threadPool = new ThreadPoolExecutor(0, 3, 5, TimeUnit.MINUTES, new LinkedBlockingQueue<Runnable>());
+	private ExecutorService threadPool = new ThreadPoolExecutor(0, 2, 5, TimeUnit.MINUTES, new LinkedBlockingQueue<Runnable>());
 	
 	/**
 	 * 1.扒取小说基本信息
@@ -67,7 +65,11 @@ public class BookstoreService {
 					break;
 				}
 				for (JsonElement el : novels) {
-					 doSave(el);
+					threadPool.submit(new Runnable() {
+						public void run() {
+							doSave(el);							
+						}
+					});
 				}
 			}
 			pageNo++;
@@ -149,7 +151,11 @@ public class BookstoreService {
 			try {
 				Novel novel = novels.get(i);
 				//保存目录
-				saveCatalog(novel);
+				threadPool.submit(new Runnable() {
+					public void run() {
+						saveCatalog(novel);
+					}
+				});
 			} catch (Exception e) {
 				log.error("Error:小说id:"+novels.get(i).getId(), e);
 			}
