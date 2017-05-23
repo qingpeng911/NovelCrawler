@@ -7,6 +7,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +51,19 @@ public class BookstoreService {
 	
 	private ExecutorService threadPool = new ThreadPoolExecutor(0, 2, 5, TimeUnit.MINUTES, new LinkedBlockingQueue<Runnable>());
 	
+	
+	/**
+	 * 启动服务器时自动调用该方法，开始扒取
+	 */
+//	@PostConstruct
+	public void startCrawler() {
+		//1.扒取小说基本信息
+		// crawlsBook();
+		//2.扒取小说目录
+		 crawlsCatalog();
+	}
+	
+	
 	/**
 	 * 1.扒取小说基本信息
 	 */
@@ -65,11 +80,11 @@ public class BookstoreService {
 					break;
 				}
 				for (JsonElement el : novels) {
-					threadPool.submit(new Runnable() {
-						public void run() {
+//					threadPool.submit(new Runnable() {
+//						public void run() {
 							doSave(el);							
-						}
-					});
+//						}
+//					});
 				}
 			}
 			pageNo++;
@@ -142,20 +157,17 @@ public class BookstoreService {
 	/**
 	 * 2.根据已有的小说信息，扒取对应小说目录
 	 */
+	@PostConstruct
 	public void crawlsCatalog() {
 		//获取所有未扒取目录的小说id集合 大概10W本左右（可以保证一次未扒完 下次继续）
 		List<Novel> novels = novelRepository.findUnCompeletNovelIds();
 		log.info("待抓取目录的小说总数："+novels.size());
 		//一次扒一万本
-		for (int i = 0; i < 10000; i++) {
+		for (int i = 0; i < novels.size(); i++) {
 			try {
 				Novel novel = novels.get(i);
 				//保存目录
-				threadPool.submit(new Runnable() {
-					public void run() {
-						saveCatalog(novel);
-					}
-				});
+				saveCatalog(novel);
 			} catch (Exception e) {
 				log.error("Error:小说id:"+novels.get(i).getId(), e);
 			}
