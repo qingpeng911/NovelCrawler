@@ -55,7 +55,7 @@ public class BookstoreService {
 	/**
 	 * 启动服务器时自动调用该方法，开始扒取
 	 */
-//	@PostConstruct
+	@PostConstruct
 	public void startCrawler() {
 		//1.扒取小说基本信息
 		// crawlsBook();
@@ -157,7 +157,6 @@ public class BookstoreService {
 	/**
 	 * 2.根据已有的小说信息，扒取对应小说目录
 	 */
-	@PostConstruct
 	public void crawlsCatalog() {
 		//获取所有未扒取目录的小说id集合 大概10W本左右（可以保证一次未扒完 下次继续）
 		List<Novel> novels = novelRepository.findUnCompeletNovelIds();
